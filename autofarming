@@ -1,1 +1,62 @@
+local player = game.Players.LocalPlayer
+local rs = game.ReplicatedStorage
 
+local MAX_DISTANCE = 50 -- Mesafe sınırı
+
+local enemiesFolder = workspace:WaitForChild("__Main"):WaitForChild("__Enemies")
+
+local currentTarget = nil
+
+local function getNearestNPC()
+    local character = player.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then
+        return nil
+    end
+
+    local root = character.HumanoidRootPart
+    local nearestNPC = nil
+    local nearestDist = math.huge
+
+    for _, npc in ipairs(enemiesFolder:GetChildren()) do
+        local npcRoot = npc:FindFirstChild("HumanoidRootPart")
+        if npcRoot then
+            local dist = (npcRoot.Position - root.Position).Magnitude
+            if dist < nearestDist and dist <= MAX_DISTANCE then
+                nearestDist = dist
+                nearestNPC = npc
+            end
+        end
+    end
+
+    return nearestNPC
+end
+
+
+local function isNPCDead(npc)
+    if not npc then return true end
+    
+    local hum = npc:FindFirstChild("Humanoid")
+    if not hum then return true end
+    
+    return hum.Health <= 0
+end
+
+
+local function updateTarget()
+    if currentTarget == nil or isNPCDead(currentTarget) then
+        currentTarget = getNearestNPC()
+    end
+end
+
+
+task.spawn(function()
+    while true do
+        updateTarget()
+
+        if currentTarget and currentTarget:FindFirstChild("HumanoidRootPart") then
+            rs.TeleportEvent:FireServer(currentTarget.HumanoidRootPart.Position)
+        end
+
+        task.wait(0.5)
+    end
+end)
